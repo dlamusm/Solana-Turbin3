@@ -1,0 +1,7 @@
+services:
+
+  turbin3:
+    image: turbin3
+    build: .
+    volumes:
+      - ./:/turbin3

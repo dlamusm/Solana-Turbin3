@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -ex
+
+cd $(dirname $0)/..
+
+docker compose build turbin3
+docker compose run --rm turbin3 bash 
