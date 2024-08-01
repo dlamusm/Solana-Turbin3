@@ -8,7 +8,7 @@ Run `./bash/docker_shell`.
 
 ## Run ts scripts
 
-1. Add a script to 'package.json'.
-2. Run 'yarn <script_name>'.
+1. Add a script to `package.json`.
+2. Run `yarn <script_name>`.
 
 

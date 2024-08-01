@@ -12,6 +12,7 @@ const connection = new Connection("https://api.devnet.solana.com", commitment);
 (async () => {
     try {
         // Start here
+        // Minted -> FZ9sFiXCC292UfhTwhxDyp7j7zK6oNuYRCSCrBU41aqu
         const mint = await createMint(
             connection,
             keypair,

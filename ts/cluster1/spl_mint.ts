@@ -12,11 +12,12 @@ const connection = new Connection("https://api.devnet.solana.com", commitment);
 const token_decimals = 1_000_000n;
 
 // Mint address
-const mint = new PublicKey("3yzrf6936vpkAzvKc5nLShZrEYUpyL5fRrCUmvs3msSK");
+const mint = new PublicKey("FZ9sFiXCC292UfhTwhxDyp7j7zK6oNuYRCSCrBU41aqu");
 
 (async () => {
     try {
         // Create an ATA
+        // ATA -> 8QWLgFC6Xa7fmzmn3pfYrXnXgsrJNzv1YX7818A4yxsF
         const ata = await getOrCreateAssociatedTokenAccount(
             connection,
             keypair,

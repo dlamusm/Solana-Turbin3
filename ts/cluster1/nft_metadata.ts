@@ -16,28 +16,30 @@ umi.use(signerIdentity(signer));
     try {
         // Follow this JSON structure
         // https://docs.metaplex.com/programs/token-metadata/changelog/v1.0#json-structure
+        // Uploaded https://arweave.net/jnFo9xeZNc8xtslwHX9NAlW-CjUsDSnaXofAfHVcZac -> rug metadata
 
-        // const image = ???
-        // const metadata = {
-        //     name: "?",
-        //     symbol: "?",
-        //     description: "?",
-        //     image: "?",
-        //     attributes: [
-        //         {trait_type: '?', value: '?'}
-        //     ],
-        //     properties: {
-        //         files: [
-        //             {
-        //                 type: "image/png",
-        //                 uri: "?"
-        //             },
-        //         ]
-        //     },
-        //     creators: []
-        // };
-        // const myUri = ???
-        // console.log("Your image URI: ", myUri);
+        const image = "https://arweave.net/KQdWPTvssnhfJTb8qxc78hcx6kx28nv7NSrr-_flfJI"
+        const metadata = {
+            name: "Diego's Super Rug",
+            symbol: "DSR",
+            description: "A blue rug",
+            image: image,
+            attributes: [
+                {trait_type: 'fly_speed', value: '100'},
+                {trait_type: 'dirt_amount', value: '30'}
+            ],
+            properties: {
+                files: [
+                    {
+                         type: "image/png",
+                         uri: "image"
+                     },
+                 ]
+             },
+             creators: [keypair.publicKey]
+        };
+        const myUri = await umi.uploader.uploadJson(metadata)
+        console.log("Your image URI: ", myUri);
     }
     catch(error) {
         console.log("Oops.. Something went wrong", error);
