@@ -1,4 +1,4 @@
-# Turbin3 WBA work
+# Solana Turbin3 work
 
 Work done as part of the Turbin3-WBA program.
 
@@ -6,7 +6,7 @@ Work done as part of the Turbin3-WBA program.
 
 Run `./bash/docker_shell`.
 
-## Run ts scripts
+## Run scripts
 
 1. Add a script to `package.json`.
 2. Run `yarn <script_name>`.
