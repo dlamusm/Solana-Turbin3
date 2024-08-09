@@ -2,12 +2,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface, TransferChecked, transfer_checked, CloseAccount, close_account}};
 
 use crate::Escrow;
+use crate::EscrowErrors;
 
 #[derive(Accounts)]
-pub struct Take<'info> {
+#[instruction(seed: u64)]
+pub struct Cancel<'info> {
     #[account(mut)]
-    pub taker: Signer<'info>,
-    pub maker: SystemAccount<'info>,
+    pub maker: Signer<'info>,
     #[account(
         mut,
         close = maker,
@@ -22,23 +23,11 @@ pub struct Take<'info> {
     pub mint_b: InterfaceAccount<'info, Mint>,
     #[account(
         init_if_needed,
-        payer = taker,
+        payer = maker,
         associated_token::mint = mint_a,
-        associated_token::authority = taker,
-    )]
-    pub taker_mint_a_ata: InterfaceAccount<'info, TokenAccount>,
-    #[account(
-        mut,
-        associated_token::mint = mint_b,
-        associated_token::authority = taker,
-    )]
-    pub taker_mint_b_ata: InterfaceAccount<'info, TokenAccount>,
-    #[account(
-        mut,
-        associated_token::mint = mint_b,
         associated_token::authority = maker,
     )]
-    pub maker_mint_b_ata: InterfaceAccount<'info, TokenAccount>,
+    pub maker_mint_a_ata: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = mint_a,
@@ -50,40 +39,17 @@ pub struct Take<'info> {
     pub token_program: Interface<'info, TokenInterface>
 }
 
-impl<'info> Take<'info> {
-    pub fn deposit(&mut self) -> Result<()> {
-
-        let token_program = self.token_program.to_account_info();
-
-        let token_program_transfer_accounts = TransferChecked {
-            from: self.taker_mint_b_ata.to_account_info(),
-            mint: self.mint_b.to_account_info(),
-            to: self.maker_mint_b_ata.to_account_info(),
-            authority: self.taker.to_account_info(),
-        };
-
-        let cpi_context = CpiContext::new(
-            token_program,
-            token_program_transfer_accounts,
-        );
-
-        transfer_checked(
-            cpi_context,
-            self.escrow.mint_b_amount,
-            self.mint_b.decimals,
-        )?;
-
-        Ok(())
-    }
-
+impl<'info> Cancel<'info> {
     pub fn withdraw(&mut self) -> Result<()> {
+
+        require!(self.maker.key() == self.escrow.maker, EscrowErrors::InvalidMaker);
 
         let token_program = self.token_program.to_account_info();
 
         let token_program_transfer_accounts = TransferChecked {
             from: self.escrow_mint_a_ata.to_account_info(),
             mint: self.mint_a.to_account_info(),
-            to: self.taker_mint_a_ata.to_account_info(),
+            to: self.maker_mint_a_ata.to_account_info(),
             authority: self.escrow.to_account_info(),
         };
 
@@ -103,8 +69,8 @@ impl<'info> Take<'info> {
 
         transfer_checked(
             cpi_context,
-            self.escrow.mint_b_amount,
-            self.mint_b.decimals,
+            self.escrow.mint_a_amount,
+            self.mint_a.decimals,
         )?;
 
         Ok(())
@@ -137,6 +103,5 @@ impl<'info> Take<'info> {
         close_account(cpi_context)?;
 
         Ok(())
-
     }
 }

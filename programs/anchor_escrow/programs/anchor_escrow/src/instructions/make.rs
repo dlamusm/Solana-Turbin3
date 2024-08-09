@@ -34,7 +34,7 @@ pub struct Make<'info> {
     #[account(
         init,
         payer = maker,
-        associated_token::mint = mint_b,
+        associated_token::mint = mint_a,
         associated_token::authority = escrow,
     )]
     pub escrow_mint_a_ata: InterfaceAccount<'info, TokenAccount>,
@@ -44,11 +44,12 @@ pub struct Make<'info> {
 }
 
 impl<'info> Make<'info> {
-    pub fn init_escrow(&mut self, seed: u64, mint_b_amount: u64, bumps: &MakeBumps) -> Result<()> {
+    pub fn init_escrow(&mut self, seed: u64, mint_a_amount: u64, mint_b_amount: u64, bumps: &MakeBumps) -> Result<()> {
         self.escrow.set_inner(Escrow{
             seed,
             maker: self.maker.key(),
             mint_a: self.mint_a.key(),
+            mint_a_amount,
             mint_b: self.mint_b.key(),
             mint_b_amount,
             bump: bumps.escrow,
@@ -56,7 +57,7 @@ impl<'info> Make<'info> {
         Ok(())
     }
     
-    pub fn deposit(&mut self, mint_a_amount: u64) -> Result<()> {
+    pub fn deposit(&mut self) -> Result<()> {
         
         let token_program = self.token_program.to_account_info();
         
@@ -73,7 +74,7 @@ impl<'info> Make<'info> {
 
         transfer_checked(
         cpi_context,
-            mint_a_amount,
+            self.escrow.mint_a_amount,
             self.mint_a.decimals
         )?;
 
