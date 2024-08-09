@@ -5,7 +5,6 @@ use crate::Escrow;
 use crate::EscrowErrors;
 
 #[derive(Accounts)]
-#[instruction(seed: u64)]
 pub struct Cancel<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
