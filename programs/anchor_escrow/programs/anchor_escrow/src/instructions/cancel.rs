@@ -2,7 +2,6 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface, TransferChecked, transfer_checked, CloseAccount, close_account}};
 
 use crate::Escrow;
-use crate::EscrowErrors;
 
 #[derive(Accounts)]
 pub struct Cancel<'info> {
@@ -40,8 +39,6 @@ pub struct Cancel<'info> {
 
 impl<'info> Cancel<'info> {
     pub fn withdraw(&mut self) -> Result<()> {
-
-        require!(self.maker.key() == self.escrow.maker, EscrowErrors::InvalidMaker);
 
         let token_program = self.token_program.to_account_info();
 

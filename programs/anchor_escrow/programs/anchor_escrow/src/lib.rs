@@ -4,11 +4,9 @@ declare_id!("22DF9UYSTGrV7UMfEs1bUqcwScCFqNFYMqVZHxQ7ZW52");
 
 pub mod state;
 pub mod instructions;
-pub mod errors;
 
 pub use state::*;
 pub use instructions::*;
-pub use errors::*;
 
 
 #[program]

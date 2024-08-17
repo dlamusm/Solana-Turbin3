@@ -1,5 +1,6 @@
 {
     "rust-analyzer.linkedProjects": [
-        "./programs/anchor_escrow/Cargo.toml"
+        "./programs/anchor_escrow/Cargo.toml",
+        "./programs/anchor_nft_staking/Cargo.toml"
     ]
 }
