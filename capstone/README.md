@@ -7,8 +7,7 @@ Welcome to the Solana Metaverse Action House, where the most coveted and exclusi
 ## Why building this project
 
 - Visibility for rare collections and assets on the different games in the ecosystem. 
-- Bringing the game assets to the collectors and not the collectors to the game.
-- Collecting rare items without diving into each specific ecosystem.
+- Bringing the game assets to the collectors and not necessarily the collectors to the game.
 - New trading experiences with interactive dynamics.
 - Better pricing for low liquidity items.
 
