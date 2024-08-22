@@ -1,0 +1,24 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "description": "Solana scripts",
+  "license": "MIT",
+  "scripts": {
+    "airdrop_to_wallet": "npx ts-node ./src/airdrop_to_wallet.ts",
+    "base58_to_wallet": "npx ts-node ./src/base58_to_wallet.ts",
+    "wallet_to_base58": "npx ts-node ./src/wallet_to_base58.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/web3.js": "^1.95.2",
+    "@types/bs58": "^4.0.4",
+    "@types/node": "^22.4.1",
+    "@types/prompt": "^1.1.8",
+    "bs58": "^6.0.0",
+    "prompt": "^1.3.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}

@@ -8,14 +8,17 @@ const connection = new Connection("https://api.devnet.solana.com");
     // Start our prompt
     prompt.start()
 
-    // Take in base58 string
+    // Take in base58 string and sol amount
     console.log('Enter your address and how much SOL to airdrop):');
     const { address, sol } = await prompt.get(['address', 'sol']);
     const wallet = new PublicKey(address as string);
+
+    // request airdrop
     try {
         const txhash = await connection.requestAirdrop(wallet, (LAMPORTS_PER_SOL * parseInt(sol as string)));
         console.log(`Success! Check out your TX here:\nhttps://explorer.solana.com/tx/${txhash}?cluster=devnet`);
     } catch(e) {
         console.error(`Oops, something went wrong: ${e}`)
     }
-})()
+})();
+
