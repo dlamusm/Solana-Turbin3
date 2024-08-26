@@ -14,6 +14,16 @@ pub struct Initialize<'info> {
         space = AuctionConfig::INIT_SPACE
     )]
     pub auction_config: Account<'info, AuctionConfig>,
+    #[account(
+        seeds = [b"auction_tresuary", auction_config.key().as_ref()],
+        bump
+    )]
+    pub auction_tresuary: SystemAccount<'info>,
+    #[account(
+        seeds = [b"auction_vault", auction_config.key().as_ref()],
+        bump
+    )]
+    pub auction_vault: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -25,6 +35,8 @@ impl<'info> Initialize<'info> {
             fee_bps,
             min_duration_min,
             max_duration_min,
+            tresuary_bump: bumps.auction_tresuary,
+            vault_bump: bumps.auction_vault,
             bump: bumps.auction_config,
         });
         Ok(())

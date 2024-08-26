@@ -3,6 +3,7 @@
 [features]
 resolution = true
 skip-lint = false
+seeds = true
 
 [programs.localnet]
 mpl_core_auction = "T8Bk6U2jRGNkqDqtvjGvKGqBzvurwx7gTdmag6jQupL"

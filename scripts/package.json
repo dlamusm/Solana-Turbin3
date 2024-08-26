@@ -6,6 +6,7 @@
   "scripts": {
     "airdrop_to_wallet": "npx ts-node ./src/airdrop_to_wallet.ts",
     "base58_to_wallet": "npx ts-node ./src/base58_to_wallet.ts",
+    "generate_keypair": "npx ts-node ./src/generate_keypair.ts",
     "wallet_to_base58": "npx ts-node ./src/wallet_to_base58.ts"
   },
   "dependencies": {
