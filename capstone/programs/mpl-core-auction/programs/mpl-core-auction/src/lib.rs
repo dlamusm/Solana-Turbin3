@@ -19,5 +19,9 @@ pub mod mpl_core_auction {
     pub fn initialize(ctx: Context<Initialize>, fee_bps: u8, min_duration_min: u32, max_duration_min: u32) -> Result<()> {
         ctx.accounts.initialize(fee_bps, min_duration_min, max_duration_min, &ctx.bumps)
     }
+
+    pub fn add_collection(ctx: Context<AddAuctionCollection>) -> Result<()> {
+        ctx.accounts.add_collection(&ctx.bumps)
+    }
 }
 

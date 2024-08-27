@@ -23,6 +23,7 @@ pub struct AddAuctionCollection<'info> {
     pub collection: Account<'info, BaseCollectionV1>,
     pub system_program: Program<'info, System>,
     #[account(address = CORE_PROGRAM_ID)]
+    /// CHECK: this will be checked by core
     pub core_program: UncheckedAccount<'info>,
 }
 

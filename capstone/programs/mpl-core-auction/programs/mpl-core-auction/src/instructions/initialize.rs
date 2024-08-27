@@ -11,7 +11,7 @@ pub struct Initialize<'info> {
         payer = admin,
         seeds = [b"auction_config"],
         bump,
-        space = AuctionConfig::INIT_SPACE
+        space = 8 + AuctionConfig::INIT_SPACE
     )]
     pub auction_config: Account<'info, AuctionConfig>,
     #[account(
