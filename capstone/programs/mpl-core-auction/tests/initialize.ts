@@ -39,7 +39,7 @@ describe("anchor auction initialization", () => {
         program.programId,
     );
 
-    it("Is initialized!", async () => {
+    it("Initializa Auction", async () => {
         // initialize
         const tx = await program.methods
             .initialize(initParams.feeBPS, initParams.minDurationMin, initParams.maxDurationMin)
