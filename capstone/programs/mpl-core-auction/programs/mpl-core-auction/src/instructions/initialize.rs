@@ -1,43 +1,45 @@
 use anchor_lang::prelude::*;
 
-use crate::AuctionConfig;
+use crate::Config;
 
 #[derive(Accounts)]
+#[instruction(seed: u32)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
     #[account(
         init,
         payer = admin,
-        seeds = [b"auction_config"],
+        seeds = [b"config", seed.to_le_bytes().as_ref()],
         bump,
-        space = 8 + AuctionConfig::INIT_SPACE
+        space = 8 + Config::INIT_SPACE
     )]
-    pub auction_config: Account<'info, AuctionConfig>,
+    pub config: Account<'info, Config>,
     #[account(
-        seeds = [b"auction_tresuary", auction_config.key().as_ref()],
+        seeds = [b"tresuary", config.key().as_ref()],
         bump
     )]
-    pub auction_tresuary: SystemAccount<'info>,
+    pub tresuary: SystemAccount<'info>,
     #[account(
-        seeds = [b"auction_vault", auction_config.key().as_ref()],
+        seeds = [b"vault", config.key().as_ref()],
         bump
     )]
-    pub auction_vault: SystemAccount<'info>,
+    pub vault: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
 
 impl<'info> Initialize<'info> {
-    pub fn initialize(&mut self, fee_bps: u8, min_duration_min: u32, max_duration_min: u32, bumps: &InitializeBumps) -> Result<()> {
-        self.auction_config.set_inner(AuctionConfig{
+    pub fn initialize(&mut self, seed: u32, fee_bps: u8, min_duration_minutes: u32, max_duration_minutes: u32, bumps: &InitializeBumps) -> Result<()> {
+        self.config.set_inner(Config{
+            seed,
             admin: self.admin.key(),
             fee_bps,
-            min_duration_min,
-            max_duration_min,
-            tresuary_bump: bumps.auction_tresuary,
-            vault_bump: bumps.auction_vault,
-            bump: bumps.auction_config,
+            min_duration_minutes,
+            max_duration_minutes,
+            vault_bump: bumps.vault,
+            tresuary_bump: bumps.tresuary,
+            bump: bumps.config,
         });
         Ok(())
     }

@@ -1,5 +1,7 @@
-pub mod auction_config;
-pub mod auction_collection;
+pub mod config;
+pub mod collection;
+pub mod asset_auction;
 
-pub use auction_config::*;
-pub use auction_collection::*;
+pub use config::*;
+pub use collection::*;
+pub use asset_auction::*;

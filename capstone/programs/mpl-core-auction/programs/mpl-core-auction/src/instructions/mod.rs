@@ -1,5 +1,7 @@
 pub mod initialize;
-pub mod add_collection;
+pub mod whitelist_collection;
+pub mod create_asset_auction;
 
 pub use initialize::*;
-pub use add_collection::*;
+pub use whitelist_collection::*;
+pub use create_asset_auction::*;

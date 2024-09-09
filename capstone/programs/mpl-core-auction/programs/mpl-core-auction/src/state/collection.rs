@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 
 #[account]
 #[derive(InitSpace)]
-pub struct AuctionCollection {
-    pub collection: Pubkey,
+pub struct Collection {
+    pub core_collection: Pubkey,
     pub bump: u8,
 }
