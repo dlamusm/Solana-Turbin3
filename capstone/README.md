@@ -16,4 +16,3 @@ Welcome to the Solana Metaverse Action House, where the most coveted and exclusi
 - Typescript
 - Rust
 - Anchor
-- Nest.js
