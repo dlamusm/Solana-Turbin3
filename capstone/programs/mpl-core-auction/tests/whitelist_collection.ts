@@ -88,7 +88,7 @@ describe("Collection Whitelisting", () => {
         const auction_collection = await program.account.collection.fetch(auctionCollectionPDA);
 
         // verify values
-        assert(auction_collection.coreCollection = collectionPubkey);
+        assert(auction_collection.coreCollection.toBase58() === collectionPubkey.toBase58());
         assert(auction_collection.bump === bump);
     });
 
