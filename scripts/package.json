@@ -8,7 +8,8 @@
     "base58_to_wallet": "npx ts-node ./src/base58_to_wallet.ts",
     "generate_keypair": "npx ts-node ./src/generate_keypair.ts",
     "wallet_to_base58": "npx ts-node ./src/wallet_to_base58.ts",
-    "mpl_core_create_collection": "npx ts-node ./src/mpl_core_create_collection.ts"
+    "mpl_core_create_collection": "npx ts-node ./src/mpl_core_create_collection.ts",
+    "mpl_core_create_asset": "npx ts-node ./src/mpl_core_create_asset.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
