@@ -1,10 +1,34 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program, BN } from "@coral-xyz/anchor";
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
-import { createCollection, fetchCollection, mplCore, create, fetchAsset } from '@metaplex-foundation/mpl-core'
-import { createSignerFromKeypair, signerIdentity, generateSigner} from '@metaplex-foundation/umi'
+import { 
+    mplCore,
+    createCollection,
+    fetchCollection,
+    create,
+    fetchAsset,
+    freezeAsset,
+    isFrozen,
+    thawAsset, 
+    addPlugin,
+    AddPluginArgs,
+    revokePluginAuthority,
+    RevokePluginAuthorityArgs,
+    NoApprovalsError,
+    InvalidAuthorityError,
+    approvePluginAuthority,
+    ApprovePluginAuthorityArgs,
+
+} from '@metaplex-foundation/mpl-core'
+import { 
+    createSignerFromKeypair,
+    signerIdentity,
+    generateSigner,
+    publicKey
+} from '@metaplex-foundation/umi'
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import assert from "assert";
+import SendTransactionError from "@solana/web3.js";
 
 import { MplCoreAuction } from "../target/types/mpl_core_auction";
 
@@ -48,46 +72,17 @@ describe("Asset auction creation", () => {
         uri: "",
     };
 
-    // Create asset args
-    const assetSigner = generateSigner(umi)
-    const assetPubkey = new anchor.web3.PublicKey(assetSigner.publicKey.toString());
-    const assetArgs = {
-        asset: assetSigner,
-        name: 'My asset',
-        uri: "",
-    };
+    // Auction collection pda
+    const [auctionCollectionPDA, _2] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("collection"), collectionPubkey.toBuffer()],
+        program.programId,
+    );
 
     // create asset auction args
     const createAssetAuctionArgs = {
         durationMinutes: 1,
         minBid: 100,
     }
-
-    it("Create collection", async () => {
-        // Create collection
-        await createCollection(umi, collectionArgs).sendAndConfirm(umi);
-
-        // verify collection exists
-        const collection = await fetchCollection(umi, collectionSigner.publicKey);
-        assert(collection.publicKey == collectionSigner.publicKey);
-    });
-
-    it("Create asset", async () => {
-        // add collection to asset
-        const collection = await fetchCollection(umi, collectionSigner.publicKey);
-        const assetArgsWithCollection = {
-            ...assetArgs,
-            collection: collection
-        }
-
-        // Create collection
-        await create(umi, assetArgsWithCollection).sendAndConfirm(umi);
-
-        // verify asset exists
-        const asset = await fetchAsset(umi, assetSigner.publicKey);
-        assert(asset.publicKey == assetSigner.publicKey);
-        assert(asset.updateAuthority.address == collectionSigner.publicKey)
-    });
 
     it("Initialize Auction", async () => {
         // initialize
@@ -101,8 +96,15 @@ describe("Asset auction creation", () => {
             .rpc(); 
     });
 
-    it("whitelist collection", async () => {
-        // add collection
+    it("Create and whitelist collection", async () => {
+        // Create collection
+        await createCollection(umi, collectionArgs).sendAndConfirm(umi);
+
+        // verify collection exists
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        assert(collection.publicKey == collectionSigner.publicKey);
+
+        // whitelist collection
         await program.methods
             .whitelistCollection()
             .accountsPartial({config: auctionConfigPDA})
@@ -111,7 +113,21 @@ describe("Asset auction creation", () => {
     });
 
     it("Create asset auction", async () => {
-        // add collection
+        // Create asset args
+        const assetSigner = generateSigner(umi)
+        const assetPubkey = new anchor.web3.PublicKey(assetSigner.publicKey.toString());
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        const assetArgs = {
+            collection: collection,
+            asset: assetSigner,
+            name: 'My asset',
+            uri: "",
+        };
+
+        // Create asset
+        await create(umi, assetArgs).sendAndConfirm(umi);
+
+        // Create asset auction
         await program.methods
             .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
             .accountsPartial({config: auctionConfigPDA})
@@ -121,29 +137,344 @@ describe("Asset auction creation", () => {
             })
             .rpc();
 
-        // get asset auction pda
+        // Get asset auction PDA
         const [assetAuctionPDA, bump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [collectionPubkey.toBuffer(), assetPubkey.toBuffer()],
+            [auctionCollectionPDA.toBuffer(), assetPubkey.toBuffer()],
             program.programId,
         );
 
-        // fetch auction asset pda
-        const asset_auction = await program.account.assetAuction.fetch(assetAuctionPDA);
+        const assetAuctionPDAUmiPubkey = publicKey(assetAuctionPDA.toString())
+
+        // fetch asset auction account
+        const assetAuctionAccount = await program.account.assetAuction.fetch(assetAuctionPDA);
 
         // verify values
-        assert(asset_auction.coreAsset = assetPubkey);
-        assert(asset_auction.seller === payerWallet.payer.publicKey);
-        assert(asset_auction.durationMinutes === createAssetAuctionArgs.durationMinutes);
-        assert(asset_auction.minBid === createAssetAuctionArgs.minBid);
-        assert(asset_auction.buyer === null);
-        assert(asset_auction.buyerBid === 0);
-        assert(asset_auction.firstBidTimestamp === 0);
-        assert(asset_auction.bump === bump);
-        
-        // verify freeze plugin
-        
-        
+        assert(assetAuctionAccount.coreAsset.toBase58() === assetPubkey.toBase58());
+        assert(assetAuctionAccount.seller.toBase58() === payerWallet.payer.publicKey.toBase58());
+        assert(assetAuctionAccount.durationMinutes === createAssetAuctionArgs.durationMinutes);
+        assert(assetAuctionAccount.minBid === createAssetAuctionArgs.minBid);
+        assert(assetAuctionAccount.buyer === null);
+        assert(assetAuctionAccount.buyerBid === 0);
+        assert(assetAuctionAccount.firstBidTimestamp.eq(new BN(0)));
+        assert(assetAuctionAccount.bump === bump);
+
+        // verify freeze plugin and asset state
+        const asset = await fetchAsset(umi, assetSigner.publicKey);
+        const freezeDelegateAddress = asset.freezeDelegate?.authority.address
+        assert(asset.publicKey == assetSigner.publicKey);
+        assert(asset.updateAuthority.address == collectionSigner.publicKey)
+        assert(freezeDelegateAddress != undefined && freezeDelegateAddress === assetAuctionPDAUmiPubkey);
+        assert(isFrozen(asset));
+
+        // verify transfer delegate
+
+        // TODO
+
+
     });
+
+    it("Create asset auction with existing plugins", async () => {
+        // Create asset args
+        const assetSigner = generateSigner(umi)
+        const assetPubkey = new anchor.web3.PublicKey(assetSigner.publicKey.toString());
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        const assetArgs = {
+            collection: collection,
+            asset: assetSigner,
+            name: 'My asset',
+            uri: "",
+        };
+
+        // Create asset
+        await create(umi, assetArgs).sendAndConfirm(umi);
+        let asset = await fetchAsset(umi, assetSigner.publicKey)
+
+        // freeze asset
+        const freezeAssetArgs = {
+            asset: asset,
+            collection: collection,
+            delegate: signer
+        };
+        await freezeAsset(umi, freezeAssetArgs).sendAndConfirm(umi);
+
+        // thaw asset
+        asset = await fetchAsset(umi, assetSigner.publicKey)
+        const thawAssetArgs = {
+            asset: asset,
+            collection: collection,
+            delegate: signer
+        };
+        await thawAsset(umi, thawAssetArgs).sendAndConfirm(umi);
+
+        // Create asset auction
+        await program.methods
+            .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
+            .accountsPartial({config: auctionConfigPDA})
+            .accounts({
+                coreCollection: collectionPubkey,
+                coreAsset: assetPubkey,
+            })
+            .rpc();
+
+        // Get asset auction PDA
+        const [assetAuctionPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
+            [auctionCollectionPDA.toBuffer(), assetPubkey.toBuffer()],
+            program.programId,
+        );
+
+        const assetAuctionPDAUmiPubkey = publicKey(assetAuctionPDA.toString())
+
+        // verify freeze plugin
+        asset = await fetchAsset(umi, assetSigner.publicKey);
+        const freezeDelegateAddress = asset.freezeDelegate?.authority.address
+        assert(freezeDelegateAddress != undefined && freezeDelegateAddress === assetAuctionPDAUmiPubkey);
+        assert(isFrozen(asset));
+
+
+        // verify transfer delegate
+
+        // TODO
+    });
+
+    it("Transfer delegate", async () => {
+        // Create asset args
+        const assetSigner = generateSigner(umi)
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        const assetArgs = {
+            collection: collection,
+            asset: assetSigner,
+            name: 'My asset',
+            uri: "",
+        };
+
+        // Create asset
+        await create(umi, assetArgs).sendAndConfirm(umi);
+        let asset = await fetchAsset(umi, assetSigner.publicKey)
+        console.log("--- 0. Asset created ---")
+        console.log(asset)
+
+        // add transfer delegate
+        const transferDelegate = generateSigner(umi)
+        const addTransferDelegateArgs: AddPluginArgs =  {
+            asset: asset.publicKey,
+            collection: collection.publicKey,
+            plugin: {
+                type: "TransferDelegate",
+                authority: { 
+                    type: 'Address', 
+                    address: transferDelegate.publicKey
+                },
+            },
+        };
+        await addPlugin(umi, addTransferDelegateArgs).sendAndConfirm(umi)
+        asset = await fetchAsset(umi, assetSigner.publicKey)
+        console.log("--- 1. Transfer authorithy added---")
+        console.log(`Transfer authority ${transferDelegate.publicKey}`)
+        console.log(asset)
+
+        // freeze asset
+        const freezeAssetArgs = {
+            asset: asset,
+            collection: collection,
+            delegate: transferDelegate.publicKey
+        };
+        await freezeAsset(umi, freezeAssetArgs).sendAndConfirm(umi);
+        asset = await fetchAsset(umi, assetSigner.publicKey)
+        console.log("--- 2. Asset frozen ---")
+        console.log(`Freeze authority ${transferDelegate.publicKey}`)
+        console.log(asset)
+
+        // remove transfer delegate
+        const revokeTransferDelegateArgs: RevokePluginAuthorityArgs = {
+            asset: asset.publicKey,
+            collection: collection.publicKey,
+            authority: signer, // the owner
+            plugin: { type: "TransferDelegate" },
+            
+        }
+        await revokePluginAuthority(umi, revokeTransferDelegateArgs).sendAndConfirm(umi)
+        asset = await fetchAsset(umi, assetSigner.publicKey)
+        console.log("--- 3. Revoked Transfer Delegate ---")
+        console.log(asset)
+
+        // update transfer delegate authority
+        const transferDelegate2 = generateSigner(umi)
+        const approvePluginAuthorityArgs: ApprovePluginAuthorityArgs = {
+            asset: asset.publicKey,
+            collection: collection.publicKey,
+            authority: signer, // the owner
+            newAuthority: { type: 'Address', address: transferDelegate2.publicKey},
+            plugin: { type: "TransferDelegate" },
+        };
+        await approvePluginAuthority(umi, approvePluginAuthorityArgs).sendAndConfirm(umi)
+        asset = await fetchAsset(umi, assetSigner.publicKey)
+        console.log("--- 4. New transfer delegate ---")
+        console.log(`New transfer authority ${transferDelegate2.publicKey}`)
+        console.log(asset)
+
+    })
+
+    it("Try owner unfreeze asset raises", async () => {
+        // Create asset args
+        const assetSigner = generateSigner(umi)
+        const assetPubkey = new anchor.web3.PublicKey(assetSigner.publicKey.toString());
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        const assetArgs = {
+            collection: collection,
+            asset: assetSigner,
+            name: 'My asset',
+            uri: "",
+        };
+
+        // Create asset
+        await create(umi, assetArgs).sendAndConfirm(umi);
+        
+        // Create asset auction
+        await program.methods
+            .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
+            .accountsPartial({config: auctionConfigPDA})
+            .accounts({
+                coreCollection: collectionPubkey,
+                coreAsset: assetPubkey,
+            })
+            .rpc();
+
+        // fetch asset
+        const asset = await fetchAsset(umi, assetSigner.publicKey);
+
+        // try revoke freeze authority
+        const revokeFreezeAuthorityArgs: RevokePluginAuthorityArgs = {
+            asset: asset.publicKey,
+            collection: collection.publicKey,
+            authority: signer, // owner
+            plugin: { type: "FreezeDelegate" },
+        };
+        
+        let revoke_failed = false;
+        try {
+            await revokePluginAuthority(umi, revokeFreezeAuthorityArgs).sendAndConfirm(umi)
+        } catch (error) {
+            if (error instanceof InvalidAuthorityError) {
+                revoke_failed = true
+            }
+        } finally {
+            assert(revoke_failed)
+        }
+
+        // Try to thaw asset
+        const thawAssetArgs = {
+            asset: asset,
+            collection: collection,
+            delegate: signer // owner
+        };
+        
+        let failed = false;
+        try {
+            await thawAsset(umi, thawAssetArgs).sendAndConfirm(umi);
+        } catch (error) {
+            if (error instanceof NoApprovalsError) {
+                failed = true
+            }
+        } finally {
+            assert(failed)
+        }
+
+
+    });
+
+    it("Try double auction on asset raises", async() => {
+        // Create asset args
+        const assetSigner = generateSigner(umi)
+        const assetPubkey = new anchor.web3.PublicKey(assetSigner.publicKey.toString());
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        const assetArgs = {
+            collection: collection,
+            asset: assetSigner,
+            name: 'My asset',
+            uri: "",
+        };
+
+        // Create asset
+        await create(umi, assetArgs).sendAndConfirm(umi);
+        
+        // Create asset auction
+        await program.methods
+            .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
+            .accountsPartial({config: auctionConfigPDA})
+            .accounts({
+                coreCollection: collectionPubkey,
+                coreAsset: assetPubkey,
+            })
+            .rpc();
+
+        // should fail because of asset auction pda is already in use
+        let failed = false;
+        try {
+            await program.methods
+                .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
+                .accountsPartial({config: auctionConfigPDA})
+                .accounts({
+                    coreCollection: collectionPubkey,
+                    coreAsset: assetPubkey,
+                })
+                .rpc();
+        } catch (error) {
+            if (error instanceof SendTransactionError.SendTransactionError) {
+                failed = true
+            }
+        } finally {
+            assert(failed)
+        }
+    });
+
+    it("Try create asset auction on frozen asset raises", async() => {
+        // Create asset args
+        const assetSigner = generateSigner(umi)
+        const assetPubkey = new anchor.web3.PublicKey(assetSigner.publicKey.toString());
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        const assetArgs = {
+            collection: collection,
+            asset: assetSigner,
+            name: 'My asset',
+            uri: "",
+        };
+
+        // Create asset
+        await create(umi, assetArgs).sendAndConfirm(umi);
+
+        // fetch  asset
+        const asset = await fetchAsset(umi, assetSigner.publicKey)
+
+        // freeze asset
+        const freezeAssetArgs = {
+            asset: asset,
+            collection: collection,
+            delegate: signer
+        };
+        await freezeAsset(umi, freezeAssetArgs).sendAndConfirm(umi);
+
+        // verify its frozen
+        const frozenAsset = await fetchAsset(umi, assetSigner.publicKey)
+        assert(isFrozen(frozenAsset));
+        
+        // should fail because of frozen asset
+        let failed = false;
+        try {
+            await program.methods
+                .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
+                .accountsPartial({config: auctionConfigPDA})
+                .accounts({
+                    coreCollection: collectionPubkey,
+                    coreAsset: assetPubkey,
+                })
+                .rpc();
+        } catch (error) {
+            failed = true
+        } finally {
+            assert(failed)
+        }
+    });
+
 
 });
 

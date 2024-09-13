@@ -1,10 +1,10 @@
-use anchor_lang::{accounts::signer, prelude::*, solana_program::program::invoke_signed};
+use anchor_lang::prelude::*;
 use mpl_core::{
     ID as CORE_PROGRAM_ID,
     fetch_plugin,
     accounts::{BaseCollectionV1, BaseAssetV1},
     types::{FreezeDelegate, UpdateAuthority, PluginType, PluginAuthority, Plugin},
-    instructions::AddPluginV1CpiBuilder
+    instructions::{AddPluginV1CpiBuilder, UpdatePluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder}
 };
 
 
@@ -26,11 +26,12 @@ pub struct CreateAssetAuction<'info> {
         bump = collection.bump,
     )]
     pub collection: Account<'info, Collection>,
+    #[account(mut)]
     pub core_collection: Account<'info, BaseCollectionV1>,
     #[account(
         mut,
         constraint = core_asset.owner == seller.key(),
-        constraint = core_asset.update_authority == UpdateAuthority::Collection(collection.key()),
+        constraint = core_asset.update_authority == UpdateAuthority::Collection(core_collection.key()),
     )]
     pub core_asset: Account<'info, BaseAssetV1>,
     #[account(
@@ -40,7 +41,7 @@ pub struct CreateAssetAuction<'info> {
         bump,
         space = 8 + AssetAuction::INIT_SPACE
     )]
-    pub auction_nft: Account<'info, AssetAuction>,
+    pub asset_auction: Account<'info, AssetAuction>,
     pub system_program: Program<'info, System>,
     /// CHECK: this will be checked by core
     #[account(address = CORE_PROGRAM_ID)]
@@ -56,7 +57,7 @@ impl<'info> CreateAssetAuction<'info> {
 
         
         // create data account
-        self.auction_nft.set_inner(
+        self.asset_auction.set_inner(
             AssetAuction {
                 collection: self.collection.key(),
                 core_asset: self.core_asset.key(),
@@ -66,26 +67,60 @@ impl<'info> CreateAssetAuction<'info> {
                 buyer: None,
                 buyer_bid: 0,
                 first_bid_timestamp: 0,
-                bump: bumps.auction_nft,
+                bump: bumps.asset_auction,
             }
         );
 
-        // check if asset is frozen freeze
+        // check if plugin exists
         match fetch_plugin::<BaseAssetV1, FreezeDelegate>(&self.core_asset.to_account_info(), PluginType::FreezeDelegate) {
-            Ok((_, fetched_freeze_delegate, _)) => {
+             Ok((_, fetched_freeze_delegate, _)) => {
+                // check if asset is frozen
                 require!(fetched_freeze_delegate.frozen == false, AuctionErrors::FrozenAsset);
-            }
-            Err(_) => {}
+
+                // update authority
+                ApprovePluginAuthorityV1CpiBuilder::new(&self.core_program.to_account_info())
+                    .asset(&self.core_asset.to_account_info())
+                    .collection(Some(&self.core_collection.to_account_info()))
+                    .payer(&self.seller.to_account_info())
+                    .authority(Some(&self.seller.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin_type(PluginType::FreezeDelegate)
+                    .new_authority(PluginAuthority::Address { address: self.asset_auction.key() })
+                    .invoke()?;
+
+                // freeze with asset auction pda seeds signature
+                let signer_seeds: [&[&[u8]]; 1] = [&[
+                    self.collection.to_account_info().key.as_ref(),
+                    self.core_asset.to_account_info().key.as_ref(),
+                    &[self.asset_auction.bump],
+                ]];
+
+                UpdatePluginV1CpiBuilder::new(&self.core_program.to_account_info())
+                    .asset(&self.core_asset.to_account_info())
+                    .collection(Some(&self.core_collection.to_account_info()))
+                    .payer(&self.seller.to_account_info())
+                    .authority(Some(&self.asset_auction.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin(Plugin::FreezeDelegate( FreezeDelegate { frozen: true } ))
+                    .invoke_signed(&signer_seeds)?;
+                
+             }
+             Err(_) => {
+                // Freeze the asset
+                AddPluginV1CpiBuilder::new(&self.core_program.to_account_info())
+                    .asset(&self.core_asset.to_account_info())
+                    .collection(Some(&self.core_collection.to_account_info()))
+                    .payer(&self.seller.to_account_info())
+                    .authority(Some(&self.seller.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin(Plugin::FreezeDelegate( FreezeDelegate { frozen: true } ))
+                    .init_authority(PluginAuthority::Address { address: self.asset_auction.key() })
+                    .invoke()?;
+
+             }
         };
     
-        // Freeze the asset  
-        AddPluginV1CpiBuilder::new(&self.core_program.to_account_info())
-            .asset(&self.core_asset.to_account_info())
-            .payer(&self.seller.to_account_info())
-            .authority(Some(&self.seller.to_account_info()))
-            .plugin(Plugin::FreezeDelegate( FreezeDelegate{ frozen: true } ))
-            .init_authority(PluginAuthority::Address { address: self.auction_nft.key() })
-            .invoke()?;
+
         
         // Add transfer delegate
 
