@@ -1,10 +1,9 @@
 use anchor_lang::prelude::*;
 use mpl_core::{
-    ID as CORE_PROGRAM_ID,
-    fetch_plugin,
-    accounts::{BaseCollectionV1, BaseAssetV1},
-    types::{FreezeDelegate, UpdateAuthority, PluginType, PluginAuthority, Plugin},
-    instructions::{AddPluginV1CpiBuilder, UpdatePluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder}
+    accounts::{BaseAssetV1, BaseCollectionV1}, 
+    fetch_plugin, 
+    instructions::{AddPluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder, UpdatePluginV1CpiBuilder}, 
+    types::{FreezeDelegate, Plugin, PluginAuthority, PluginType, TransferDelegate, UpdateAuthority}, ID as CORE_PROGRAM_ID
 };
 
 
@@ -50,12 +49,10 @@ pub struct CreateAssetAuction<'info> {
 
 impl<'info> CreateAssetAuction<'info> {
     pub fn create_asset_auction(&mut self, duration_minutes: u32, min_bid: u32, bumps: &CreateAssetAuctionBumps) -> Result<()> {
-        
-        // validations
+        // duration validations
         require!(duration_minutes >= self.config.min_duration_minutes, AuctionErrors::DurationTooShort);
         require!(duration_minutes <= self.config.max_duration_minutes, AuctionErrors::DurationTooLong);
 
-        
         // create data account
         self.asset_auction.set_inner(
             AssetAuction {
@@ -71,13 +68,14 @@ impl<'info> CreateAssetAuction<'info> {
             }
         );
 
-        // check if plugin exists
+        // check if freeze delegate plugin exists
         match fetch_plugin::<BaseAssetV1, FreezeDelegate>(&self.core_asset.to_account_info(), PluginType::FreezeDelegate) {
-             Ok((_, fetched_freeze_delegate, _)) => {
-                // check if asset is frozen
-                require!(fetched_freeze_delegate.frozen == false, AuctionErrors::FrozenAsset);
+             Ok((plugin_authority, freeze_delegate, _)) => {
+                // check if asset is frozen or has an active freeze delegate
+                require!(freeze_delegate.frozen == false, AuctionErrors::FrozenAsset);
+                require!(plugin_authority == PluginAuthority::Owner, AuctionErrors::FreezeDelegateNotOwner);
 
-                // update authority
+                // update freeze delegate authority
                 ApprovePluginAuthorityV1CpiBuilder::new(&self.core_program.to_account_info())
                     .asset(&self.core_asset.to_account_info())
                     .collection(Some(&self.core_collection.to_account_info()))
@@ -116,14 +114,41 @@ impl<'info> CreateAssetAuction<'info> {
                     .plugin(Plugin::FreezeDelegate( FreezeDelegate { frozen: true } ))
                     .init_authority(PluginAuthority::Address { address: self.asset_auction.key() })
                     .invoke()?;
+                
 
              }
         };
     
+        // check if transfer delegate plugin exists
+        match fetch_plugin::<BaseAssetV1, TransferDelegate>(&self.core_asset.to_account_info(), PluginType::TransferDelegate) {
+            Ok((plugin_authority, _, _)) => {
+                // check if asset has active transfer delegate
+                require!(plugin_authority == PluginAuthority::Owner, AuctionErrors::TransferDelegateNotOwner);
 
-        
-        // Add transfer delegate
-
+                // update transfer delegate authority
+                ApprovePluginAuthorityV1CpiBuilder::new(&self.core_program.to_account_info())
+                    .asset(&self.core_asset.to_account_info())
+                    .collection(Some(&self.core_collection.to_account_info()))
+                    .payer(&self.seller.to_account_info())
+                    .authority(Some(&self.seller.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin_type(PluginType::TransferDelegate)
+                    .new_authority(PluginAuthority::Address { address: self.asset_auction.key() })
+                    .invoke()?;
+            }
+            Err(_) => {
+                // Add transfer delegate
+                AddPluginV1CpiBuilder::new(&self.core_program.to_account_info())
+                    .asset(&self.core_asset.to_account_info())
+                    .collection(Some(&self.core_collection.to_account_info()))
+                    .payer(&self.seller.to_account_info())
+                    .authority(Some(&self.seller.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin(Plugin::TransferDelegate( TransferDelegate { } ))
+                    .init_authority(PluginAuthority::Address { address: self.asset_auction.key() })
+                    .invoke()?;
+            }
+        };
 
         Ok(())
     }

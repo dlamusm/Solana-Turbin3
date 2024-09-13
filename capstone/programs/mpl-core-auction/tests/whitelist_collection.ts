@@ -49,15 +49,6 @@ describe("Collection Whitelisting", () => {
         uri: "",
     };
 
-    it("Create collection", async () => {
-        // Create collection
-        await createCollection(umi, collectionArgs).sendAndConfirm(umi);
-
-        // verify collection exists
-        const collection = await fetchCollection(umi, collectionSigner.publicKey);
-        assert(collection.publicKey == collectionSigner.publicKey);
-    });
-
     it("Initialize Auction", async () => {
         // initialize
         const tx = await program.methods
@@ -71,6 +62,13 @@ describe("Collection Whitelisting", () => {
     });
 
     it("whitelist collection", async () => {
+        // Create collection
+        await createCollection(umi, collectionArgs).sendAndConfirm(umi);
+
+        // verify collection exists
+        const collection = await fetchCollection(umi, collectionSigner.publicKey);
+        assert(collection.publicKey == collectionSigner.publicKey);
+
         // add collection
         await program.methods
             .whitelistCollection()

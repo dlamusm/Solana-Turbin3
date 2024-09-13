@@ -9,6 +9,10 @@ pub enum AuctionErrors {
     DurationTooShort,
     #[msg("Duration is longer than the maximum allowed duration!!")]
     DurationTooLong,
-    #[msg("Asset is frozen!!")]
+    #[msg("Asset is frozen, thaw first!!")]
     FrozenAsset,
+    #[msg("Freeze delegate different from owner, revoke fisrt!!")]
+    FreezeDelegateNotOwner,
+    #[msg("Transfer delegate different from owner, revoke fisrt!!")]
+    TransferDelegateNotOwner,
 }
