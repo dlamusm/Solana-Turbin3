@@ -27,5 +27,9 @@ pub mod mpl_core_auction {
     pub fn create_asset_auction(ctx: Context<CreateAssetAuction>, duration_minutes: u32, min_bid: u32) -> Result<()> {
         ctx.accounts.create_asset_auction(duration_minutes, min_bid, &ctx.bumps)
     }
+
+    pub fn cancel_asset_auction(ctx: Context<CancelAssetAuction>) -> Result<()> {
+        ctx.accounts.cancel_asset_auction()
+    }
 }
 
