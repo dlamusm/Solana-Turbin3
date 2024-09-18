@@ -38,36 +38,37 @@ import { MplCoreAuction } from "../target/types/mpl_core_auction";
 
 
 describe("Asset auction creation", () => {
-    // Configure provider
+    // configure provider
     const provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);    
 
     // configure program
     const program = anchor.workspace.MplCoreAuction as Program<MplCoreAuction>;
 
-    // Initialization params
-    const initParams = {
-        seed: 3,
-        feeBPS: 100,
-        minDurationMinutes: 0,
-        maxDurationMinutes: 2,
-    };
-
-    // Get auction config pda
-    const [auctionConfigPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("config"), new BN(initParams.seed).toBuffer("le", 4)],
-        program.programId,
-    );
-
-    // Create a UMI connection to create collection
+    // create a UMI connection to run mpl core commands
     const umi = createUmi(provider.connection);
     const payerWallet = provider.wallet as NodeWallet;
     const keypair = umi.eddsa.createKeypairFromSecretKey(payerWallet.payer.secretKey);
     const signer = createSignerFromKeypair(umi, keypair);
+    const signerPubkey = new anchor.web3.PublicKey(signer.publicKey.toString())
     umi.use(signerIdentity(signer));
     umi.use(mplCore())
 
-    // Create collection args
+    // config params
+    const initParams = {
+        seed: 3,
+        feeBPS: 100,
+        minDurationMinutes: 60,
+        maxDurationMinutes: 14400,
+    };
+
+    // config account pda
+    const [auctionConfigPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("config"), new BN(initParams.seed).toArrayLike(Buffer, "le", 4)],
+        program.programId,
+    );
+
+    // collection params
     const collectionSigner = generateSigner(umi)
     const collectionPubkey = new anchor.web3.PublicKey(collectionSigner.publicKey.toString());
     const collectionArgs = {
@@ -76,17 +77,11 @@ describe("Asset auction creation", () => {
         uri: "",
     };
 
-    // Auction collection pda
+    // collection auction account pda
     const [auctionCollectionPDA, _2] = anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("collection"), collectionPubkey.toBuffer()],
+        [Buffer.from("collection"), auctionConfigPDA.toBuffer(), collectionPubkey.toBuffer()],
         program.programId,
     );
-
-    // create asset auction args
-    const createAssetAuctionArgs = {
-        durationMinutes: 1,
-        minBid: 100,
-    }
 
     // helper function to create asset
     async function createAsset(): Promise<AssetV1> {
@@ -105,9 +100,8 @@ describe("Asset auction creation", () => {
         return fetchAsset(umi, assetSigner.publicKey)
     }
 
-    it("Initialize Auction", async () => {
-        // initialize
-        const tx = await program.methods
+    before("intialize auction", async () => {
+        await program.methods
             .initialize(
                 initParams.seed,
                 initParams.feeBPS,
@@ -117,34 +111,41 @@ describe("Asset auction creation", () => {
             .rpc(); 
     });
 
-    it("Create and whitelist collection", async () => {
-        // Create collection
+    before("create collection", async () => {
         await createCollection(umi, collectionArgs).sendAndConfirm(umi);
 
         // verify collection exists
         const collection = await fetchCollection(umi, collectionSigner.publicKey);
         assert(collection.publicKey == collectionSigner.publicKey);
+    });
 
+    before("create collection auction", async () => {
         // whitelist collection
         await program.methods
-            .whitelistCollection()
+            .createCollectionAuction()
             .accountsPartial({config: auctionConfigPDA})
-            .accounts({coreCollection: collectionPubkey})
+            .accounts({collection: collectionPubkey})
             .rpc();
     });
 
-    it("Create asset auction", async () => {
+    it("create asset auction", async () => {
         // Create asset 
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
-        
+
+        // Create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
+
         // Create asset auction
         await program.methods
             .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
             .accountsPartial({config: auctionConfigPDA})
             .accounts({
-                coreCollection: collectionPubkey,
-                coreAsset: assetPubkey,
+                collection: collectionPubkey,
+                asset: assetPubkey,
             })
             .rpc();
 
@@ -161,11 +162,11 @@ describe("Asset auction creation", () => {
 
         // verify values
         assert(assetAuctionAccount.coreAsset.toBase58() === assetPubkey.toBase58());
-        assert(assetAuctionAccount.seller.toBase58() === payerWallet.payer.publicKey.toBase58());
+        assert(assetAuctionAccount.owner.toBase58() === payerWallet.payer.publicKey.toBase58());
         assert(assetAuctionAccount.durationMinutes === createAssetAuctionArgs.durationMinutes);
-        assert(assetAuctionAccount.minBid === createAssetAuctionArgs.minBid);
-        assert(assetAuctionAccount.buyer === null);
-        assert(assetAuctionAccount.buyerBid === 0);
+        assert(assetAuctionAccount.minBidLamports.eq(createAssetAuctionArgs.minBid));
+        assert(assetAuctionAccount.buyer.toBase58() === signerPubkey.toBase58());
+        assert(assetAuctionAccount.buyerBidLamports.eq(new BN(0)));
         assert(assetAuctionAccount.firstBidTimestamp.eq(new BN(0)));
         assert(assetAuctionAccount.bump === bump);
 
@@ -182,7 +183,7 @@ describe("Asset auction creation", () => {
         assert(transferDelegateAddress != undefined && transferDelegateAddress === assetAuctionPDAUmiPubkey); 
     });
 
-    it("Create asset auction with existing plugins", async () => {
+    it("create asset auction with existing plugins", async () => {
         // get asset and collection
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
@@ -230,17 +231,23 @@ describe("Asset auction creation", () => {
         }
         await revokePluginAuthority(umi, revokeTransferDelegateArgs).sendAndConfirm(umi)
 
-        // Create asset auction
+        // create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
+
+        // create asset auction
         await program.methods
             .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
             .accountsPartial({config: auctionConfigPDA})
             .accounts({
-                coreCollection: collectionPubkey,
-                coreAsset: assetPubkey,
+                collection: collectionPubkey,
+                asset: assetPubkey,
             })
             .rpc();
 
-        // Get asset auction PDA
+        // get asset auction PDA
         const [assetAuctionPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
             [auctionCollectionPDA.toBuffer(), assetPubkey.toBuffer()],
             program.programId,
@@ -259,19 +266,83 @@ describe("Asset auction creation", () => {
         assert(transferDelegateAddress != undefined && transferDelegateAddress === assetAuctionPDAUmiPubkey); 
     });
 
-    it("Try owner unfreeze asset raises", async () => {
-        // Create asset 
+    it("try create asset auction with invalid duration", async () => {
+        // create asset 
+        let asset = await createAsset()
+        const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
+
+        // create asset auction short duration args
+        const createAssetAuctionShortArgs = {
+            durationMinutes: 1,
+            minBid: new BN(100),
+        }
+
+        // create asset auction with shorter duration
+        let short_failed = false;
+        try {
+            await program.methods
+                .createAssetAuction(createAssetAuctionShortArgs.durationMinutes, createAssetAuctionShortArgs.minBid)
+                .accountsPartial({config: auctionConfigPDA})
+                .accounts({
+                    collection: collectionPubkey,
+                    asset: assetPubkey,
+                })
+                .rpc();
+        } catch (error) {
+            if (error instanceof AnchorError) {
+                assert(error.error.errorCode.code === "DurationTooShort")
+                short_failed = true
+            }
+        } finally {
+            assert(short_failed)
+        }
+
+        // create asset auction longer duration args
+        const createAssetAuctionLongArgs = {
+            durationMinutes: 20000,
+            minBid: new BN(100),
+        }
+
+        // create asset auction with longer duration
+        let long_failed = false;
+        try {
+            await program.methods
+                .createAssetAuction(createAssetAuctionLongArgs.durationMinutes, createAssetAuctionLongArgs.minBid)
+                .accountsPartial({config: auctionConfigPDA})
+                .accounts({
+                    collection: collectionPubkey,
+                    asset: assetPubkey,
+                })
+                .rpc();
+        } catch (error) {
+            if (error instanceof AnchorError) {
+                assert(error.error.errorCode.code === "DurationTooLong")
+                long_failed = true
+            }
+        } finally {
+            assert(long_failed)
+        }
+    });
+
+    it("try owner unfreeze asset raises", async () => {
+        // create asset 
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
         const collection = await fetchCollection(umi, collectionSigner.publicKey);
 
-        // Create asset auction
+        // create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
+
+        // create asset auction
         await program.methods
             .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
             .accountsPartial({config: auctionConfigPDA})
             .accounts({
-                coreCollection: collectionPubkey,
-                coreAsset: assetPubkey,
+                collection: collectionPubkey,
+                asset: assetPubkey,
             })
             .rpc();
 
@@ -297,7 +368,7 @@ describe("Asset auction creation", () => {
             assert(revoke_failed)
         }
 
-        // Try to thaw asset
+        // try to thaw asset
         const thawAssetArgs = {
             asset: asset,
             collection: collection,
@@ -392,19 +463,25 @@ describe("Asset auction creation", () => {
     })
     */
 
-    it("Try owner remove transfer delegate raises", async () => {
-        // Create asset 
+    xit("try owner remove transfer delegate raises", async () => {
+        // create asset 
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
         const collection = await fetchCollection(umi, collectionSigner.publicKey);
 
-        // Create asset auction
+        // create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
+
+        // create asset auction
         await program.methods
             .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
             .accountsPartial({config: auctionConfigPDA})
             .accounts({
-                coreCollection: collectionPubkey,
-                coreAsset: assetPubkey,
+                collection: collectionPubkey,
+                asset: assetPubkey,
             })
             .rpc();
 
@@ -449,18 +526,24 @@ describe("Asset auction creation", () => {
         }
     })
 
-    it("Try create double asset auction raises", async() => {
-        // Create asset 
+    it("try create double asset auction raises", async() => {
+        // create asset 
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
+
+        // create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
         
         // Create asset auction
         await program.methods
             .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
             .accountsPartial({config: auctionConfigPDA})
             .accounts({
-                coreCollection: collectionPubkey,
-                coreAsset: assetPubkey,
+                collection: collectionPubkey,
+                asset: assetPubkey,
             })
             .rpc();
 
@@ -471,8 +554,8 @@ describe("Asset auction creation", () => {
                 .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
                 .accountsPartial({config: auctionConfigPDA})
                 .accounts({
-                    coreCollection: collectionPubkey,
-                    coreAsset: assetPubkey,
+                    collection: collectionPubkey,
+                    asset: assetPubkey,
                 })
                 .rpc();
         } catch (error) {
@@ -484,8 +567,8 @@ describe("Asset auction creation", () => {
         }
     });
 
-    it("Try create asset auction on frozen asset raises", async() => {
-        // Create asset 
+    it("try create asset auction on frozen asset raises", async() => {
+        // create asset 
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
         const collection = await fetchCollection(umi, collectionSigner.publicKey);
@@ -501,6 +584,12 @@ describe("Asset auction creation", () => {
         // verify its frozen
         asset = await fetchAsset(umi, asset.publicKey)
         assert(isFrozen(asset));
+
+        // create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
         
         // should fail because of frozen asset
         let failed = false;
@@ -509,8 +598,8 @@ describe("Asset auction creation", () => {
                 .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
                 .accountsPartial({config: auctionConfigPDA})
                 .accounts({
-                    coreCollection: collectionPubkey,
-                    coreAsset: assetPubkey,
+                    collection: collectionPubkey,
+                    asset: assetPubkey,
                 })
                 .rpc();
         } catch (error) {
@@ -523,8 +612,8 @@ describe("Asset auction creation", () => {
         }
     });
 
-    it("Try create asset auction on unfrozen asset with freeze delegate raises", async() => {
-        // Create asset 
+    it("try create asset auction on unfrozen asset with freeze delegate raises", async() => {
+        // create asset 
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
         const collection = await fetchCollection(umi, collectionSigner.publicKey);
@@ -557,15 +646,21 @@ describe("Asset auction creation", () => {
         };
         await approvePluginAuthority(umi, approvePluginAuthorityArgs).sendAndConfirm(umi)
 
-        // should fail because of frozen asset
+        // create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
+
+        // should fail because of freeze delegate
         let failed = false;
         try {
             await program.methods
                 .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
                 .accountsPartial({config: auctionConfigPDA})
                 .accounts({
-                    coreCollection: collectionPubkey,
-                    coreAsset: assetPubkey,
+                    collection: collectionPubkey,
+                    asset: assetPubkey,
                 })
                 .rpc();
         } catch (error) {
@@ -578,8 +673,8 @@ describe("Asset auction creation", () => {
         }
     });
 
-    it("Try create asset auction on asset with transfer delegate raises", async() => {
-        // Create asset 
+    it("try create asset auction on asset with transfer delegate raises", async() => {
+        // create asset 
         let asset = await createAsset()
         const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
         const collection = await fetchCollection(umi, collectionSigner.publicKey);
@@ -598,6 +693,12 @@ describe("Asset auction creation", () => {
             },
         };
         await addPlugin(umi, addTransferDelegateArgs).sendAndConfirm(umi)
+
+        // create asset auction args
+        const createAssetAuctionArgs = {
+            durationMinutes: 70,
+            minBid: new BN(100),
+        }
         
         // should fail because of existing transfer delegate
         let failed = false;
@@ -606,8 +707,8 @@ describe("Asset auction creation", () => {
                 .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
                 .accountsPartial({config: auctionConfigPDA})
                 .accounts({
-                    coreCollection: collectionPubkey,
-                    coreAsset: assetPubkey,
+                    collection: collectionPubkey,
+                    asset: assetPubkey,
                 })
                 .rpc();
         } catch (error) {

@@ -20,16 +20,20 @@ pub mod mpl_core_auction {
         ctx.accounts.initialize(seed, fee_bps, min_duration_minutes, max_duration_minutes, &ctx.bumps)
     }
 
-    pub fn whitelist_collection(ctx: Context<WhitelistCollection>) -> Result<()> {
-        ctx.accounts.whitelist_collection(&ctx.bumps)
+    pub fn create_collection_auction(ctx: Context<CreateCollectionAuction>) -> Result<()> {
+        ctx.accounts.create_collection_auction(&ctx.bumps)
     }
 
-    pub fn create_asset_auction(ctx: Context<CreateAssetAuction>, duration_minutes: u32, min_bid: u32) -> Result<()> {
-        ctx.accounts.create_asset_auction(duration_minutes, min_bid, &ctx.bumps)
+    pub fn create_asset_auction(ctx: Context<CreateAssetAuction>, duration_minutes: u32, min_bid_lamports: u64) -> Result<()> {
+        ctx.accounts.create_asset_auction(duration_minutes, min_bid_lamports, &ctx.bumps)
     }
 
     pub fn cancel_asset_auction(ctx: Context<CancelAssetAuction>) -> Result<()> {
         ctx.accounts.cancel_asset_auction()
+    }
+
+    pub fn bid_asset_auction(ctx: Context<BidAssetAuction>, lamports: u64) -> Result<()> {
+        ctx.accounts.bid_asset_auction(lamports)
     }
 }
 

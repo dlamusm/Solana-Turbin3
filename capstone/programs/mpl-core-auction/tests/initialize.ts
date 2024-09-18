@@ -7,14 +7,14 @@ import { MplCoreAuction } from "../target/types/mpl_core_auction";
 
 describe("Auction initialization", () => {
 
-    // Configure provider
+    // configure provider
     const provider = anchor.AnchorProvider.env();
-    anchor.setProvider(provider);
+    anchor.setProvider(provider);    
 
     // configure program
     const program = anchor.workspace.MplCoreAuction as Program<MplCoreAuction>;
 
-    // Initialization params
+    // config params
     const initParams = {
         seed: 1,
         feeBPS: 100,
@@ -22,27 +22,27 @@ describe("Auction initialization", () => {
         maxDurationMinutes: 14400,
     };
 
-    // get auction pda
+    // config account pda
     const [auctionConfigPDA, bump] = anchor.web3.PublicKey.findProgramAddressSync(
         [Buffer.from("config"), new BN(initParams.seed).toArrayLike(Buffer, "le", 4)],
         program.programId,
     );
 
-    // get auction tresuary pda
+    // tresuary pda
     const [_1, tresuaryBump] = anchor.web3.PublicKey.findProgramAddressSync(
         [Buffer.from("tresuary"), auctionConfigPDA.toBuffer()],
         program.programId,
     );
 
-    // get auction vault pda
+    // vault pda
     const [_2, vaultBump] = anchor.web3.PublicKey.findProgramAddressSync(
         [Buffer.from("vault"), auctionConfigPDA.toBuffer()],
         program.programId,
     );
 
-    it("Initialize Auction", async () => {
+    it("create config", async () => {
         // initialize
-        const tx = await program.methods
+        await program.methods
             .initialize(
                 initParams.seed,
                 initParams.feeBPS,
@@ -51,7 +51,7 @@ describe("Auction initialization", () => {
             )
             .rpc(); 
 
-        // fetch auction pda
+        // fetch config pda
         const auction_config = await program.account.config.fetch(auctionConfigPDA);
 
         // verify values
