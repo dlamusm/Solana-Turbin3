@@ -14,6 +14,8 @@ use crate::{AssetAuction, AuctionErrors, CollectionAuction, Config};
 pub struct BidAssetAuction<'info> {
     // EXTERNAL ACCOUNTS
     #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut)]
     pub buyer: Signer<'info>,
     #[account(
         mut,
@@ -57,6 +59,7 @@ pub struct BidAssetAuction<'info> {
 impl<'info> BidAssetAuction<'info> {
     pub fn bid_asset_auction(&mut self, lamports: u64) -> Result<()> {
         require!(self.buyer.key() != self.asset_auction.owner, AuctionErrors::OwnerBid);
+        require!(self.payer.key() != self.asset_auction.owner, AuctionErrors::OwnerBid);
         require!(lamports > self.asset_auction.buyer_bid_lamports, AuctionErrors::InvalidBid);
 
         // seconds
@@ -101,7 +104,7 @@ impl<'info> BidAssetAuction<'info> {
         
         // transfer new bid funds to vault
         let ix = transfer(
-            &self.buyer.key(),
+            &self.payer.key(),
             &self.vault.key(),
             lamports,
         );
@@ -109,7 +112,7 @@ impl<'info> BidAssetAuction<'info> {
         invoke(
             &ix,
             &[
-                self.buyer.to_account_info(),
+                self.payer.to_account_info(),
                 self.vault.to_account_info(),
             ],
         )?;

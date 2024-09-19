@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use mpl_core::{
     accounts::{BaseAssetV1, BaseCollectionV1}, 
     instructions::{RemovePluginV1CpiBuilder, UpdatePluginV1CpiBuilder, RevokePluginAuthorityV1CpiBuilder}, 
-    types::{PluginType, UpdateAuthority, FreezeDelegate, Plugin }, ID as CORE_PROGRAM_ID
+    types::{PluginType, FreezeDelegate, Plugin }, ID as CORE_PROGRAM_ID
 };
 
 
@@ -22,7 +22,6 @@ pub struct CancelAssetAuction<'info> {
     #[account(
         mut,
         has_one = owner,
-        constraint = asset.update_authority == UpdateAuthority::Collection(collection.key()),
     )]
     pub asset: Account<'info, BaseAssetV1>,
 
@@ -39,7 +38,7 @@ pub struct CancelAssetAuction<'info> {
     pub collection_auction: Account<'info, CollectionAuction>,
     #[account(
         mut,
-        close = payer,
+        close = owner,
         seeds = [collection_auction.key().as_ref(), asset.key().as_ref()],
         bump = asset_auction.bump,
     )]
@@ -55,7 +54,7 @@ pub struct CancelAssetAuction<'info> {
 impl<'info> CancelAssetAuction<'info> {
     pub fn cancel_asset_auction(&mut self) -> Result<()> {
         // validate auction has not started
-        require!(self.asset_auction.buyer == self.asset_auction.owner, AuctionErrors::AuctionStarted);
+        require!(self.asset_auction.first_bid_timestamp == 0, AuctionErrors::AuctionStarted);
 
         // set program signer seeds
         let signer_seeds: [&[&[u8]]; 1] = [&[

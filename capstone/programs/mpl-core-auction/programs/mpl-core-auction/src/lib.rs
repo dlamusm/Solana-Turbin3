@@ -35,5 +35,9 @@ pub mod mpl_core_auction {
     pub fn bid_asset_auction(ctx: Context<BidAssetAuction>, lamports: u64) -> Result<()> {
         ctx.accounts.bid_asset_auction(lamports)
     }
+
+    pub fn complete_asset_auction(ctx: Context<CompleteAssetAuction>) -> Result<()> {
+        ctx.accounts.complete_asset_auction()
+    }
 }
 

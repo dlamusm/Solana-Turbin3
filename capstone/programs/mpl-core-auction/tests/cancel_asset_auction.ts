@@ -177,7 +177,7 @@ describe("Asset auction cancel", () => {
         }
         
         // create asset auction
-        const signature = await program.methods
+        await program.methods
             .createAssetAuction(createAssetAuctionArgs.durationMinutes, createAssetAuctionArgs.minBid)
             .accountsPartial({config: auctionConfigPDA})
             .accounts({
@@ -194,6 +194,7 @@ describe("Asset auction cancel", () => {
             .accountsPartial({
                 config: auctionConfigPDA,
                 buyer: buyer.publicKey,
+                payer: buyer.publicKey,
             })
             .accounts({
                 previousBuyer: payerWallet.publicKey,

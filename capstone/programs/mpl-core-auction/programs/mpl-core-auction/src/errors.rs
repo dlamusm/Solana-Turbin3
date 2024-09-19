@@ -21,6 +21,10 @@ pub enum AuctionErrors {
     AuctionStarted,
     #[msg("Auction has ended, impossible to place bid!!")]
     AuctionEnded,
+    #[msg("Auction has not started, impossible to complete!!")]
+    AuctionNotStarted,
+    #[msg("Auction is still running, impossible to complete!!")]
+    AuctionRunning,
     #[msg("New bid is lower or equal than the current bid!!")]
     InvalidBid,
     #[msg("The owner of the asset can not bid!!")]
