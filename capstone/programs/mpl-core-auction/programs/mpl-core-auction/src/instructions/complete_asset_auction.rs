@@ -17,10 +17,11 @@ pub struct CompleteAssetAuction<'info> {
     // EXTERNAL ACCOUNTS
     #[account(mut)]
     pub payer: Signer<'info>,
+    /// CHECK: No signature or program ownership needed
     #[account(mut)]
-    pub owner: SystemAccount<'info>,
-    #[account(mut)]
-    pub buyer: SystemAccount<'info>,
+    pub owner: UncheckedAccount<'info>,
+    /// CHECK: No signature or program ownership needed
+    pub buyer: UncheckedAccount<'info>,
     #[account(mut)]
     pub collection: Account<'info, BaseCollectionV1>,
     #[account(

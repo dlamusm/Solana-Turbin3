@@ -5,8 +5,6 @@ use mpl_core::{
     ID as CORE_PROGRAM_ID
 };
 
-
-
 use crate::{AssetAuction, AuctionErrors, CollectionAuction, Config};
 
 
@@ -15,13 +13,14 @@ pub struct BidAssetAuction<'info> {
     // EXTERNAL ACCOUNTS
     #[account(mut)]
     pub payer: Signer<'info>,
-    #[account(mut)]
-    pub buyer: Signer<'info>,
+    /// CHECK: No signature or program ownership needed
+    pub buyer: UncheckedAccount<'info>,
+    /// CHECK: No signature or program ownership needed
     #[account(
         mut,
         address = asset_auction.buyer,
     )]
-    pub previous_buyer: SystemAccount<'info>,
+    pub previous_buyer: UncheckedAccount<'info>,
     pub collection: Account<'info, BaseCollectionV1>,
     pub asset: Account<'info, BaseAssetV1>,
 
