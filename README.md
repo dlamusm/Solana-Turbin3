@@ -4,11 +4,11 @@ Work done as part of the Turbin3-WBA program.
 
 ## Capstone project
 
-Solana Metaverse Action House
+Solana Metaverse Auction House
 
 ### Description
 
-Welcome to the Solana Metaverse Action House, where the most coveted and exclusive in-game assets from Solana's top-tier games are up for grabs. Here, only the finest treasures and rarest items make the cut, offering you a chance to own a piece of gaming history.
+Welcome to the Solana Metaverse Auction House, where the most coveted and exclusive in-game assets from Solana's top-tier games are up for grabs. Here, only the finest treasures and rarest items make the cut, offering you a chance to own a piece of gaming history.
 
 ### Technical description
 
@@ -20,7 +20,7 @@ Implementation can be found under the `capstone` folder.
 
 - initialize: initialize an auction program.
 - create_collection_auction: whitelist an mpl-core collection.
-- create_asset_auction: create an auction for an mpl-core asset that belongs to the whitelisted  mpl-core collections.
+- create_asset_auction: create an auction for an mpl-core asset that belongs to the whitelisted mpl-core collections.
 - cancel_asset_auction: cancel an asset auction before a bid is placed.
 - bid_asset_auction: bid on an asset auction.
 - complete_asset_auction: transfer the asset to the buyer and transfer sol to the seller, after the auction is over.
@@ -57,4 +57,3 @@ Some example programs done during the course.
 ### Start a docker shell with all dependencies installed
 
 Run `./bash/docker_shell`.
-
