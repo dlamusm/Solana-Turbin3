@@ -19,11 +19,11 @@ Implementation can be found under the `capstone` folder.
 ### Instructions
 
 - initialize: initialize an auction program.
-- create_collection_auction: whitelist collection.
-- create_asset_auction: create an auction for an mpl-core asset that belongs to a collection.
+- create_collection_auction: whitelist an mpl-core collection.
+- create_asset_auction: create an auction for an mpl-core asset that belongs to the whitelisted  mpl-core collections.
 - cancel_asset_auction: cancel an asset auction before a bid is placed.
 - bid_asset_auction: bid on an asset auction.
-- complete_asset_auction: transfer the asset to the buyer and transfer sol to the seller.
+- complete_asset_auction: transfer the asset to the buyer and transfer sol to the seller, after the auction is over.
 
 ### Deployment
 
