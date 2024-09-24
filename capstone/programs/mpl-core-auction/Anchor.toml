@@ -8,11 +8,16 @@ seeds = true
 [programs.localnet]
 mpl_core_auction = "T8Bk6U2jRGNkqDqtvjGvKGqBzvurwx7gTdmag6jQupL"
 
+[programs.devnet]
+mpl_core_auction = "T8Bk6U2jRGNkqDqtvjGvKGqBzvurwx7gTdmag6jQupL"
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+#cluster = "devnet"
+#wallet = "~/.config/solana/id_devnet.json"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

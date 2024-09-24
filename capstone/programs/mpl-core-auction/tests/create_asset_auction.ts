@@ -405,64 +405,6 @@ describe("Asset auction creation", () => {
         }
     });
 
-    /*
-    it("Updateding transfer delegate bug replication", async () => {
-        // Create asset 
-        let asset = await createAsset()
-        const assetPubkey = new anchor.web3.PublicKey(asset.publicKey.toString());
-        const collection = await fetchCollection(umi, collectionSigner.publicKey);
-        console.log("--- 0. Asset created ---")
-        console.log(asset)
-
-        // add transfer delegate
-        const transferDelegate = generateSigner(umi)
-        const addTransferDelegateArgs: AddPluginArgs =  {
-            asset: asset.publicKey,
-            collection: collection.publicKey,
-            plugin: {
-                type: "TransferDelegate",
-                authority: { 
-                    type: 'Address', 
-                    address: transferDelegate.publicKey
-                },
-            },
-        };
-        await addPlugin(umi, addTransferDelegateArgs).sendAndConfirm(umi)
-        asset = await fetchAsset(umi, assetSigner.publicKey)
-        console.log("--- 1. Transfer authorithy added---")
-        console.log(`Transfer authority ${transferDelegate.publicKey}`)
-        console.log(asset)
-
-        // remove transfer delegate
-        const revokeTransferDelegateArgs: RevokePluginAuthorityArgs = {
-            asset: asset.publicKey,
-            collection: collection.publicKey,
-            authority: signer, // the owner
-            plugin: { type: "TransferDelegate" },
-            
-        }
-        await revokePluginAuthority(umi, revokeTransferDelegateArgs).sendAndConfirm(umi)
-        asset = await fetchAsset(umi, assetSigner.publicKey)
-        console.log("--- 2. Revoked Transfer Delegate ---")
-        console.log(asset)
-
-        // update transfer delegate authority
-        const transferDelegate2 = generateSigner(umi)
-        const approvePluginAuthorityArgs: ApprovePluginAuthorityArgs = {
-            asset: asset.publicKey,
-            collection: collection.publicKey,
-            authority: signer, // the owner
-            newAuthority: { type: 'Address', address: transferDelegate2.publicKey},
-            plugin: { type: "TransferDelegate" },
-        };
-        await approvePluginAuthority(umi, approvePluginAuthorityArgs).sendAndConfirm(umi)
-        asset = await fetchAsset(umi, assetSigner.publicKey)
-        console.log("--- 3. New transfer delegate ---")
-        console.log(`New transfer authority ${transferDelegate2.publicKey}`)
-        console.log(asset)
-    })
-    */
-
     xit("try owner remove transfer delegate raises", async () => {
         // create asset 
         let asset = await createAsset()

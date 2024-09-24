@@ -16,3 +16,16 @@ Welcome to the Solana Metaverse Action House, where the most coveted and exclusi
 - Typescript
 - Rust
 - Anchor
+
+## Instructions
+
+- initialize: initialize an auction program.
+- create_collection_auction: whitelist collection.
+- create_asset_auction: create an auction for an mpl-core asset that belongs to a collection.
+- cancel_asset_auction: cancel an asset auction before a bid is placed.
+- bid_asset_auction: bid on an asset auction.
+- complete_asset_auction: transfer the asset to the buyer and transfer sol to the seller.
+
+## Deployment
+
+- Devnet: T8Bk6U2jRGNkqDqtvjGvKGqBzvurwx7gTdmag6jQupL

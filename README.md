@@ -4,7 +4,7 @@ Work done as part of the Turbin3-WBA program.
 
 ## Capstone project
 
-Can be found under `capstone` folder.
+Solana Metaverse Action House
 
 ### Description
 
@@ -13,6 +13,21 @@ Welcome to the Solana Metaverse Action House, where the most coveted and exclusi
 ### Technical description
 
 Anchor program to do auctions with mpl-core NFTs. The admin can initialize the auction program with specific parameters and whitelist selected collections. Users can list NFTs from whitelisted collections and bid on existing listings.
+
+Implementation can be found under the `capstone` folder.
+
+### Instructions
+
+- initialize: initialize an auction program.
+- create_collection_auction: whitelist collection.
+- create_asset_auction: create an auction for an mpl-core asset that belongs to a collection.
+- cancel_asset_auction: cancel an asset auction before a bid is placed.
+- bid_asset_auction: bid on an asset auction.
+- complete_asset_auction: transfer the asset to the buyer and transfer sol to the seller.
+
+### Deployment
+
+- Devnet: T8Bk6U2jRGNkqDqtvjGvKGqBzvurwx7gTdmag6jQupL
 
 ## Scripts
 
