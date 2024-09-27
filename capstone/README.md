@@ -29,3 +29,41 @@ Welcome to the Solana Metaverse Auction House, where the most coveted and exclus
 ## Deployment
 
 - Devnet: T8Bk6U2jRGNkqDqtvjGvKGqBzvurwx7gTdmag6jQupL
+
+## Testing suite
+
+The mpl-core-auction program instructions are fully tested. Run `anchor test` to run all tests. The test cover the following scenarios:
+
+```
+  Collection Whitelisting
+    ✔ create collection auction (405ms)
+
+  Asset auction creation
+    ✔ create asset auction (834ms)
+    ✔ create asset auction with existing plugins (2440ms)
+    ✔ try create asset auction with invalid duration (426ms)
+    ✔ try owner unfreeze asset raises (816ms)
+    ✔ try create double asset auction raises (805ms)
+    ✔ try create asset auction on frozen asset raises (818ms)
+    ✔ try create asset auction on unfrozen asset with freeze delegate raises (1634ms)
+    ✔ try create asset auction on asset with transfer delegate raises (817ms)
+
+
+  Asset auction cancel
+    ✔ cancel asset auction (1230ms)
+    ✔ try cancel asset auction after bid raises (1644ms)
+
+
+  Asset auction bidding
+    ✔ bid (1637ms)
+    ✔ bid raising (2454ms)
+    ✔ try lower bid raises (2051ms)
+    ✔ try owner bid raises (1630ms)
+    ✔ try bid after auction is completed (2048ms)
+
+
+  Asset auction complete
+    ✔ complete auction (2058ms)
+    ✔ try complete before duration expires raises (1631ms)
+    ✔ try complete before starting raises (1225ms)
+```
